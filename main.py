@@ -33,8 +33,7 @@ def checkDell(driver, sn):  # TODO return boolean status and date
     # wait until search box loaded in, select it, send serial number, press enter
     element = WebDriverWait(driver, 20).until(EC.visibility_of_element_located(
         (By.ID, "mh-search-input")))
-    # element.send_keys(sn)
-    # sleep(0.8)
+
     entered = False
     while not entered:
         try:
@@ -43,18 +42,21 @@ def checkDell(driver, sn):  # TODO return boolean status and date
             element.send_keys(sn)
             element.send_keys(Keys.ENTER)
 
-        except selenium.common.exceptions.StaleElementReferenceException:
+        except:
             entered = False
+
     try:
         # wait until warranty check text ready
         element = WebDriverWait(driver, 20).until(EC.visibility_of_element_located(
             (By.XPATH, "//*[@class='warrantyExpiringLabel mb-0 ml-1 mr-1']")))
+        element_text = element.text
     except:
         return False, False
+
     # checks text and returns warranty status and bool representing whether or not check was successful
-    if "Expired" in element.text:
+    if "Expired" in element_text:
         return False, True
-    elif "Expires" in element.text:
+    elif "Expires" in element_text:  # TODO include prosupport
         return True, True
 
 
@@ -87,10 +89,6 @@ if __name__ == '__main__':
 
     end_time = datetime.now()
 
-    print("# of assets: " + total_check + "  start: " +
-          start_time + "  end: " + end_time)
-
-    # and chill a bit
-    sleep(7)
-    # k, cool. let's bounce.
+    print("# of assets: " + str(total_check) + "  start: " +
+          str(start_time) + "  end: " + str(end_time))
     driver.quit()
