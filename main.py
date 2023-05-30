@@ -1,6 +1,8 @@
 from time import sleep
 from datetime import datetime
 import os
+import numpy as np
+import threading
 
 import selenium
 from selenium import webdriver
@@ -16,7 +18,8 @@ csv_reader = csv.reader(open("data.csv", "r"))
 # convert string to list
 list_of_csv = list(csv_reader)
 
-searching = False
+total = len(list_of_csv)
+num_checked = 0;
 
 
 def setup_chrome():
@@ -67,10 +70,12 @@ def checkDell(
         return "SN LOOKUP FAILURE"
 
 
-def updateProgress(progress, total):
+def addProgress():
+    global num_checked
+    num_checked += 1
     os.system("clear")
-    print(str(progress) + "/" + str(total) + "\n")
-    percentage = progress / total
+    print(str(num_checked) + "/" + str(total) + "\n")
+    percentage = num_checked / total
     bar_length = 50
     p = round(percentage * bar_length)
     s = "["
@@ -82,21 +87,38 @@ def updateProgress(progress, total):
     print(s)
 
 
+def checkList(list):# given a list, iterate through and call checkDell(), modifying the list with the results
+    driver = setup_chrome()  # setupdriver
+    length = len(list)
+    i = 0
+    if list[0][2] == "Service Tag":
+        i = 1
+    while i < length:
+        list[i][6] = checkDell(driver, list[i][2])
+        addProgress()
+        i += 1
+    driver.close()
+
+
 # make runable
 if __name__ == "__main__":
-    driver = setup_chrome()
-    length = len(list_of_csv)
+    num_agents = 4
+    chunks = np.array_split(list_of_csv, num_agents)
 
-    # iterate through csv, calling checkDell
-    i = 1
-    while i < len(list_of_csv):
-        updateProgress(i, length)
-        list_of_csv[i][6] = checkDell(driver, list_of_csv[i][2])
-        i += 1
+    threads = []
+    for chunk in chunks:
+        print("making thread!")
+        threads.append(threading.Thread(target=checkList, args=(chunk,)))
+    for thread in threads:
+        thread.start()
+        print("starting thread")
+    for thread in threads:
+        thread.join()
+        print("joining thread")
+
     file = open("output.csv", "w+", newline="")
-
-    with file:
-        write = csv.writer(file)
-        write.writerows(list_of_csv)
+    for chunk in chunks:
+        with file:
+            write = csv.writer(file)
+            write.writerows(chunk)
     print(list_of_csv)
-    driver.quit()
