@@ -17,9 +17,14 @@ import csv
 csv_reader = csv.reader(open("data.csv", "r"))
 # convert string to list
 list_of_csv = list(csv_reader)
-
+output = []
 total = len(list_of_csv)
-num_checked = 0;
+num_checked = 0; #used to track progress and update progress bar
+output_file = open("output.csv", "w+", newline="") #csv for writing output data
+output_file.truncate() #clears file
+
+
+lock = threading.Lock() #allows us to write to a shared file from concurrent threads in a Thread-Safe manner
 
 
 def setup_chrome():
@@ -73,7 +78,7 @@ def checkDell(
 def addProgress():
     global num_checked
     num_checked += 1
-    os.system("clear")
+    #os.system("clear")
     print(str(num_checked) + "/" + str(total) + "\n")
     percentage = num_checked / total
     bar_length = 50
@@ -87,8 +92,7 @@ def addProgress():
     print(s)
 
 
-def checkList(list):# given a list, iterate through and call checkDell(), modifying the list with the results
-    driver = setup_chrome()  # setupdriver
+def checkList(driver, list):# given a list, iterate through and call checkDell(), modifying the list with the results
     length = len(list)
     i = 0
     if list[0][2] == "Service Tag":
@@ -97,28 +101,34 @@ def checkList(list):# given a list, iterate through and call checkDell(), modify
         list[i][6] = checkDell(driver, list[i][2])
         addProgress()
         i += 1
-    driver.close()
 
+def checkBatch(batch): #batch is a list of chunks of data. this is so it will write to output file regularly instead of just at the end
+    global output_file
+    driver = setup_chrome() #setup driver
+    for chunk in batch:
+        print("chunk size " + str(len(chunk)))
+        checkList(driver, chunk)
+        print("acquiring lock")
+        lock.acquire() #prevent other threads from writing to file
+        output_file = open("output.csv", "a") #opens file in append mode
+        with output_file:
+            print("writing")
+            write = csv.writer(output_file)
+            write.writerows(chunk)
+        lock.release() #allow other threads to write to file
+    driver.close()
 
 # make runable
 if __name__ == "__main__":
-    num_agents = 4
-    chunks = np.array_split(list_of_csv, num_agents)
+    num_agents = 8
+    num_chunks = 336
+    chunks = np.array_split(list_of_csv, num_chunks)
+    batches = np.array_split(chunks, num_agents)
 
     threads = []
-    for chunk in chunks:
-        print("making thread!")
-        threads.append(threading.Thread(target=checkList, args=(chunk,)))
+    for batch in batches:
+        threads.append(threading.Thread(target=checkBatch, args=(batch,)))
     for thread in threads:
         thread.start()
-        print("starting thread")
     for thread in threads:
         thread.join()
-        print("joining thread")
-
-    file = open("output.csv", "w+", newline="")
-    for chunk in chunks:
-        with file:
-            write = csv.writer(file)
-            write.writerows(chunk)
-    print(list_of_csv)
