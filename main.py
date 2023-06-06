@@ -18,6 +18,9 @@ import csv
 csv_reader = csv.reader(open("data.csv", "r"))
 # convert string to list
 list_of_csv = list(csv_reader)
+sn_column = 4
+exp_date_column = 5
+
 output = []
 total = len(list_of_csv)
 # csv for writing output data
@@ -42,7 +45,7 @@ def setup_chrome():
 
 
 def checkDell(driver, sn):  # searching s/n argument on dell page, returns expiration date text
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, 10)
     try:
         element = wait.until(EC.presence_of_element_located((By.ID, "mh-search-input")))  # wait until element is present in page (not necessarily visible)
         driver.find_element(By.ID, "mh-search-input").send_keys(sn) #send string arugment SN into search box
@@ -62,6 +65,7 @@ def checkDell(driver, sn):  # searching s/n argument on dell page, returns expir
                         wait.until(EC.presence_of_element_located((By.ID, "spanValMsgEntryError")))
                     except:
                         print("cant find the thing")
+                        return "Search failed... moving on"
                         continue
             loading = False
         element = wait.until(EC.presence_of_element_located((By.XPATH,"//*[@class='warrantyExpiringLabel mb-0 ml-1 mr-1']",))) #verify the text we want is present
@@ -71,17 +75,16 @@ def checkDell(driver, sn):  # searching s/n argument on dell page, returns expir
 
 # given a list, iterate through and call checkDell(), modifying the list with the results
 def checkList(driver, list):
-    for row in list[1:]:
-        # column 2 is the serial number column in the dataset
-        result = checkDell(driver, row[2])
+    for row in list:
+        result = checkDell(driver, row[sn_column])
 
         #searches for first occurence of a number in string, returns a Match object. This is all to remove the "expires", "expired", etc from the result
         m = re.search(r"\d", result)
         if m:  # if number found
             #saves string with anything before first digit sliced off
-            row[6] = result[m.start():]
+            row[exp_date_column] = result[m.start():]
         else:  # if no number found
-            row[6] = checkDell(driver, row[2])  # saves result
+            row[exp_date_column] = checkDell(driver, row[sn_column])  # saves result
 
 
 def checkBatch(batch):  # batch is a list of chunks of data. this is so it will write to output file regularly instead of just at the end
@@ -103,9 +106,9 @@ def checkBatch(batch):  # batch is a list of chunks of data. this is so it will 
 
 # make runable
 if __name__ == "__main__":
-    num_agents = 5
-    num_chunks = 13
-    chunks = np.array_split(list_of_csv, num_chunks)
+    num_agents = 6
+    num_chunks = 23
+    chunks = np.array_split(list_of_csv[1:], num_chunks)
     batches = np.array_split(chunks, num_agents)
 
     threads = []
