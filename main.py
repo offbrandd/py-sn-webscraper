@@ -18,8 +18,8 @@ import csv
 csv_reader = csv.reader(open("data.csv", "r"))
 # convert string to list
 list_of_csv = list(csv_reader)
-sn_column = 4
-exp_date_column = 5
+sn_column = 1
+exp_date_column = 2
 
 output = []
 total = len(list_of_csv)
@@ -48,6 +48,7 @@ def checkDell(driver, sn):  # searching s/n argument on dell page, returns expir
     wait = WebDriverWait(driver, 10)
     try:
         element = wait.until(EC.presence_of_element_located((By.ID, "mh-search-input")))  # wait until element is present in page (not necessarily visible)
+        driver.find_element(By.ID, "mh-search-input").clear()
         driver.find_element(By.ID, "mh-search-input").send_keys(sn) #send string arugment SN into search box
         wait.until(EC.text_to_be_present_in_element_value((By.ID, "mh-search-input"), sn)) #double check SN is actually in search box
         driver.find_element(By.ID, "mh-search-input").send_keys(Keys.ENTER) #press enter to search
@@ -107,7 +108,7 @@ def checkBatch(batch):  # batch is a list of chunks of data. this is so it will 
 # make runable
 if __name__ == "__main__":
     num_agents = 6
-    num_chunks = 23
+    num_chunks = 11 #work around for issue with array_split() that is caused when number of sections argument is not a factor of length of list
     chunks = np.array_split(list_of_csv[1:], num_chunks)
     batches = np.array_split(chunks, num_agents)
 
