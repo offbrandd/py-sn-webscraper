@@ -8,7 +8,6 @@ import re
 import selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -43,49 +42,33 @@ def setup_chrome():
     driver.get(site)
     return driver
 
-
 def checkDell(driver, sn):  # searching s/n argument on dell page, returns expiration date text
-    wait = WebDriverWait(driver, 10)
-    try:
-        element = wait.until(EC.presence_of_element_located((By.ID, "mh-search-input")))  # wait until element is present in page (not necessarily visible)
-        driver.find_element(By.ID, "mh-search-input").clear()
-        driver.find_element(By.ID, "mh-search-input").send_keys(sn) #send string arugment SN into search box
-        wait.until(EC.text_to_be_present_in_element_value((By.ID, "mh-search-input"), sn)) #double check SN is actually in search box
-        driver.find_element(By.ID, "mh-search-input").send_keys(Keys.ENTER) #press enter to search
-        wait.until(EC.text_to_be_present_in_element_value((By.ID, "mh-search-input"), "")) #on this site, search box contents are emptied when search is performed. check box is empty as means of verifying page has loaded. this probably isn't necessary
-        loading = True
-        while loading: #wait.until logic not prevent thread from continuing until a certain state is met, attempts to account for pages that result from invalid serial numbers (doesn't currently work)
+    wait = WebDriverWait(driver,5)
+    driver.get("https://www.dell.com/support/search/en-us#q=" + sn)
+    sleep(1)
+    if "null" in driver.current_url:
+        return "No warranty info available"
+    else:
+        try:
+            return wait.until(EC.presence_of_element_located((By.XPATH,"//*[@class='warrantyExpiringLabel mb-0 ml-1 mr-1']",))).text
+        except:
             try:
-                wait.until(EC.text_to_be_present_in_element((By.XPATH,"//*[@class='service-tag mb-0 d-none d-lg-block']",), sn))
+                wait.until(EC.presence_of_element_located((By.ID, "null-result-text")))
+                return "Invalid SN"
             except:
-                try:
-                    wait.until(EC.text_to_be_present_in_element((By.XPATH,"//*[@class='dds__mb-2 dds__mb-md-0 Gray800']",), "Article Number: 000196860"))
-                    return "SERVICE TAG ERROR"
-                except:
-                    try:
-                        wait.until(EC.presence_of_element_located((By.ID, "spanValMsgEntryError")))
-                    except:
-                        print("cant find the thing")
-                        return "Search failed... moving on"
-                        continue
-            loading = False
-        element = wait.until(EC.presence_of_element_located((By.XPATH,"//*[@class='warrantyExpiringLabel mb-0 ml-1 mr-1']",))) #verify the text we want is present
-        return wait.until(EC.presence_of_element_located((By.XPATH,"//*[@class='warrantyExpiringLabel mb-0 ml-1 mr-1']",))).text
-    except Exception as er:
-        return "SEARCH ERROR"
-
+                return "Could not find expiry label"
+        
 # given a list, iterate through and call checkDell(), modifying the list with the results
 def checkList(driver, list):
     for row in list:
         result = checkDell(driver, row[sn_column])
-
         #searches for first occurence of a number in string, returns a Match object. This is all to remove the "expires", "expired", etc from the result
         m = re.search(r"\d", result)
         if m:  # if number found
             #saves string with anything before first digit sliced off
             row[exp_date_column] = result[m.start():]
         else:  # if no number found
-            row[exp_date_column] = checkDell(driver, row[sn_column])  # saves result
+            row[exp_date_column] = result  # saves result
 
 
 def checkBatch(batch):  # batch is a list of chunks of data. this is so it will write to output file regularly instead of just at the end
@@ -107,8 +90,13 @@ def checkBatch(batch):  # batch is a list of chunks of data. this is so it will 
 
 # make runable
 if __name__ == "__main__":
+    now = datetime.now()
+
+    current_time = now.strftime("%H:%M:%S")
+    print("Current Time =", current_time)
+
     num_agents = 6
-    num_chunks = 11 #work around for issue with array_split() that is caused when number of sections argument is not a factor of length of list
+    num_chunks = 25 #work around for issue with array_split() that is caused when number of sections argument is not a factor of length of list
     chunks = np.array_split(list_of_csv[1:], num_chunks)
     batches = np.array_split(chunks, num_agents)
 
@@ -119,3 +107,8 @@ if __name__ == "__main__":
       thread.start()
     for thread in threads:
       thread.join()
+    
+    now = datetime.now()
+
+    current_time = now.strftime("%H:%M:%S")
+    print("Current Time =", current_time)
