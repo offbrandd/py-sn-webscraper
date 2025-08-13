@@ -1,4 +1,17 @@
 # py-sn-webscraper
-ETHICS NOTE: discovered this might violate TOS for target sites, despite it's relatively low volume of requests. May continue to update for personal development, but I recommend NOT using anything in this repo (or a lot of web scraping in general) unless you own the target site or have express permission
+A Python web scraper that automates the process of checking a list of serial numbers against Dell's warranty page. The script is designed to run slowly to avoid overloading the target site with requests.
 
-python selenium webscraper to loop through a spreadsheet of serial numbers, search them on Dell's Warranty Check page (slowly, as to maintain ethics by not overloading with traffic) and print out the results. The intention was to expand this to other OEM websites and save it all to a spreadsheet
+How it Works
+The script uses the Selenium library to:
+  1. Loop through a list of serial numbers from a spreadsheet.
+  
+  2. Navigate to Dell's Warranty Check page.
+  
+  3. Input each serial number and submit the search.
+  
+  4. Extract and print the warranty results.
+
+The ultimate goal of this project was to expand the functionality to include other Original Equipment Manufacturer (OEM) websites and save the collected data to a spreadsheet.
+
+⚠️ **Ethics Note**
+  Please be aware that web scraping, even at a low volume, may violate the Terms of Service (TOS) of certain websites. This repository is intended for personal development and educational purposes. It is not recommended to use this script without express permission from the target site owner.
